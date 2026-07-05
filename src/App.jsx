@@ -15,9 +15,8 @@ import {
   Trash2,
   Soup,
   Clock,
-  Info,
-  KeyRound,
 } from "lucide-react";
+import { generatePlan } from "./services/planner";
 
 /* ---------------------------------------------------------
    TOKENS
@@ -51,70 +50,6 @@ function useGoogleFonts() {
    HELPERS
 --------------------------------------------------------- */
 const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
-function stripFences(text) {
-  return text.replace(/```json/gi, "").replace(/```/g, "").trim();
-}
-
-async function callClaude(apiKey, systemPrompt, userPrompt) {
-  if (!apiKey) {
-    throw new Error("Renseigne ta clé API Anthropic dans les réglages avant de générer un planning");
-  }
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 4000,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
-    }),
-  });
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(`Erreur API (${response.status}) ${body.slice(0, 200)}`);
-  }
-  const data = await response.json();
-  const text = (data.content || [])
-    .filter((b) => b.type === "text")
-    .map((b) => b.text)
-    .join("\n");
-  return JSON.parse(stripFences(text));
-}
-
-const SYSTEM_PROMPT = `Tu es un assistant de planification de batchcooking pour 2 personnes.
-
-RÈGLES STRICTES :
-- Ingrédients interdits (ne jamais les utiliser, sous aucune forme) : aubergine, courgette, carotte, tomate cuite/chaude (en sauce, gratin, poêlée). La tomate crue/froide est autorisée.
-- Aucun ingrédient classé NOVA 4 (ultra-transformé). Maximum 3 ingrédients NOVA 3 par recette. Utiliser un maximum d'ingrédients NOVA 1 et NOVA 2.
-- Respecter les repères nutritionnels de manger-bouger.fr : légumes à chaque repas, féculents de préférence complets, protéines variées sur la semaine, matières grasses et sel limités.
-- TOUT DOIT ÊTRE FAIT MAISON : bouillons (y compris ce qui remplacerait un bouillon cube), sauces, yaourts, vinaigrettes, fonds. Aucun équivalent industriel dans la liste de courses.
-- Optimiser les achats : utiliser des produits "entiers" valorisés sur plusieurs recettes (ex : poulet entier -> blancs + cuisses + carcasse pour bouillon). Identifier 1 à 2 produits pivots par semaine.
-- Si une recette a besoin d'une préparation maison (bouillon, sauce...), cette préparation doit être fabriquée AVANT dans le planning, jamais supposée déjà disponible.
-- Adapter les plats à la saison indiquée et à la température : s'il fait chaud (>=28°C), proposer des plats froids/tièdes/légers, éviter les plats chauds/mijotés lourds.
-- Les étapes de préparation doivent être réorganisées et optimisées pour cuisiner TOUS les repas de la semaine en une seule session (cuissons parallèles, découpes groupées), pas recette par recette.
-
-Tu dois répondre UNIQUEMENT avec un objet JSON valide, sans aucun texte avant ou après, sans balises markdown, respectant exactement ce schéma :
-{
-  "meta": { "nights": number, "season": string, "tempNote": string, "pivotProducts": string[] },
-  "recipes": [
-    { "day": string, "name": string, "ingredients": [{ "name": string, "qty": string }], "fridgeLife": string, "nutritionNote": string, "novaNote": string }
-  ],
-  "homemadePreps": [
-    { "name": string, "quantity": string, "usedIn": string, "expiry": string, "storage": string }
-  ],
-  "shoppingList": [
-    { "aisle": string, "items": [{ "name": string, "qty": string }] }
-  ],
-  "prepSteps": [
-    { "text": string, "refs": string[] }
-  ]
-}`;
 
 /* ---------------------------------------------------------
    STORAGE (window.storage : localStorage hors Claude Artifacts)
@@ -160,13 +95,6 @@ async function deleteWeek(id) {
   const index = await loadHistoryIndex();
   const next = index.filter((w) => w.id !== id);
   await window.storage.set("history-index", JSON.stringify(next));
-}
-
-function getApiKey() {
-  return localStorage.getItem("semainier-api-key") || "";
-}
-function setApiKeyStorage(key) {
-  localStorage.setItem("semainier-api-key", key);
 }
 
 /* ---------------------------------------------------------
@@ -253,12 +181,10 @@ export default function App() {
   const [error, setError] = useState("");
   const [currentWeek, setCurrentWeek] = useState(null);
   const [history, setHistory] = useState([]);
-  const [apiKey, setApiKey] = useState(getApiKey());
 
   const [nights, setNights] = useState(5);
   const [dislikes, setDislikes] = useState("aubergine, courgette, carotte, tomate chaude");
   const [tempHint, setTempHint] = useState("doux");
-  const [notes, setNotes] = useState("");
 
   const refreshHistory = useCallback(async () => {
     const idx = await loadHistoryIndex();
@@ -269,28 +195,11 @@ export default function App() {
     refreshHistory();
   }, [refreshHistory]);
 
-  const saveApiKey = (key) => {
-    setApiKey(key);
-    setApiKeyStorage(key);
-  };
-
   const generate = async () => {
     setLoading(true);
     setError("");
     try {
-      const userPrompt = `Crée un planning de batchcooking pour ${nights} soirs, pour 2 personnes.
-Ingrédients non aimés à exclure en plus des règles fixes : ${dislikes || "aucun supplémentaire"}.
-Contexte météo/saison : ${
-        tempHint === "chaud"
-          ? "il fait chaud (>=28°C), privilégie des plats froids/tièdes/légers"
-          : tempHint === "froid"
-          ? "il fait froid, les plats chauds/mijotés sont bienvenus"
-          : "météo douce/tempérée, plats normaux"
-      }.
-Notes complémentaires : ${notes || "aucune"}.
-Réponds uniquement avec le JSON demandé.`;
-
-      const result = await callClaude(apiKey, SYSTEM_PROMPT, userPrompt);
+      const result = generatePlan({ nights, tempHint, dislikes });
 
       const week = {
         id: uid(),
@@ -388,13 +297,9 @@ Réponds uniquement avec le JSON demandé.`;
             setDislikes={setDislikes}
             tempHint={tempHint}
             setTempHint={setTempHint}
-            notes={notes}
-            setNotes={setNotes}
             loading={loading}
             error={error}
             onGenerate={generate}
-            apiKey={apiKey}
-            onSaveApiKey={saveApiKey}
           />
         )}
         {tab === "plan" && <PlanTab week={currentWeek} />}
@@ -450,33 +355,9 @@ Réponds uniquement avec le JSON demandé.`;
 /* ---------------------------------------------------------
    TAB: GENERATE
 --------------------------------------------------------- */
-function GenerateTab({ nights, setNights, dislikes, setDislikes, tempHint, setTempHint, notes, setNotes, loading, error, onGenerate, apiKey, onSaveApiKey }) {
-  const [showKeyField, setShowKeyField] = useState(!apiKey);
-
+function GenerateTab({ nights, setNights, dislikes, setDislikes, tempHint, setTempHint, loading, error, onGenerate }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-      <Card>
-        <SectionTitle icon={KeyRound}>Clé API Anthropic</SectionTitle>
-        {showKeyField ? (
-          <>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={(e) => onSaveApiKey(e.target.value)}
-              placeholder="sk-ant-..."
-              style={inputStyle}
-            />
-            <p style={{ fontSize: "0.75rem", color: COLORS.inkSoft, margin: "0.5rem 0 0" }}>
-              Stockée uniquement sur cet appareil, jamais envoyée ailleurs qu'à l'API Anthropic. Crée-en une sur console.anthropic.com.
-            </p>
-          </>
-        ) : (
-          <button onClick={() => setShowKeyField(true)} style={{ ...inputStyle, textAlign: "left", cursor: "pointer" }}>
-            •••••••••••••• (modifier)
-          </button>
-        )}
-      </Card>
-
       <Card>
         <SectionTitle icon={Sparkles}>Nouvelle semaine</SectionTitle>
 
@@ -514,16 +395,6 @@ function GenerateTab({ nights, setNights, dislikes, setDislikes, tempHint, setTe
               </button>
             ))}
           </div>
-        </Field>
-
-        <Field label="Notes complémentaires (optionnel)">
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={2}
-            placeholder="Ex : j'ai déjà du bouillon au congélateur, pas de poisson cette semaine..."
-            style={{ ...inputStyle, resize: "vertical" }}
-          />
         </Field>
 
         <button onClick={onGenerate} disabled={loading} style={primaryButtonStyle(loading)}>
