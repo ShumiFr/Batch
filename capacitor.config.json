@@ -1,0 +1,6 @@
+{
+  "appId": "com.semainier.app",
+  "appName": "Le Semainier",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}
