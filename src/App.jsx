@@ -19,10 +19,12 @@ import {
   Plus,
   BookOpen,
   X,
+  ChevronLeft,
 } from "lucide-react";
-import { generatePlan, formatUnitQty, stepFor } from "./services/planner";
-import { RECIPES } from "./data/recipes";
+import { generatePlan, formatUnitQty, formatQty, stepFor } from "./services/planner";
+import { RECIPES, PREPS } from "./data/recipes";
 import { SEASONS, getSeason, recipeHasProduce } from "./data/seasons";
+import { recipeVisual } from "./services/recipeVisual";
 
 /* ---------------------------------------------------------
    TOKENS
@@ -750,6 +752,12 @@ function RecipesTab({ season }) {
   // Filtre saison : par défaut on montre les recettes de la saison courante.
   const [seasonOnly, setSeasonOnly] = useState(true);
   const [produce, setProduce] = useState(null); // pastille active
+  const [selected, setSelected] = useState(null); // fiche recette ouverte
+
+  // Vue fiche : remplace la liste tant qu'une recette est ouverte.
+  if (selected) {
+    return <RecipeSheet recipe={selected} onBack={() => setSelected(null)} />;
+  }
 
   let list = RECIPES;
   if (seasonOnly) list = list.filter((r) => r.seasons.includes(season.weather));
@@ -868,28 +876,153 @@ function RecipesTab({ season }) {
         </span>
       </div>
 
-      {/* Liste des recettes */}
+      {/* Liste des recettes : cartes compactes cliquables */}
       {list.length === 0 ? (
         <EmptyState text={produce ? `Aucune recette avec « ${produce.name} » ${seasonOnly ? "cette saison." : "."}` : "Aucune recette."} />
       ) : (
         list.map((r) => (
-          <Card key={r.id}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "0.5rem" }}>
-              <h3 style={{ fontFamily: "'Fraunces', serif", fontSize: "1.05rem", margin: "0 0 0.4rem", color: COLORS.ink }}>{r.name}</h3>
+          <button
+            key={r.id}
+            onClick={() => setSelected(r)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.8rem",
+              textAlign: "left",
+              padding: "0.55rem",
+              background: COLORS.white,
+              border: `1px solid ${COLORS.line}`,
+              borderRadius: "14px",
+              cursor: "pointer",
+              width: "100%",
+            }}
+          >
+            <RecipeCover recipe={r} size={58} radius={10} emojiSize="1.7rem" />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h3 style={{ fontFamily: "'Fraunces', serif", fontSize: "0.98rem", margin: "0 0 0.3rem", color: COLORS.ink }}>{r.name}</h3>
+              <div style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap" }}>
+                <Tag tone="mustard">{r.protein}</Tag>
+                {r.seasons.map((s) => (
+                  <Tag key={s}>{WEATHER_LABEL[s] || s}</Tag>
+                ))}
+              </div>
             </div>
-            <div style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap", marginBottom: "0.5rem" }}>
-              <Tag tone="mustard">{r.protein}</Tag>
-              {r.seasons.map((s) => (
-                <Tag key={s}>{WEATHER_LABEL[s] || s}</Tag>
-              ))}
-            </div>
-            <ul style={{ margin: 0, paddingLeft: "1.1rem", fontSize: "0.83rem", color: COLORS.inkSoft }}>
-              {r.ingredients.map((ing, j) => (
-                <li key={j}>{ing.name}</li>
-              ))}
-            </ul>
-          </Card>
+          </button>
         ))
+      )}
+    </div>
+  );
+}
+
+// Vignette d'une recette : vraie photo si `recipe.image`, sinon vignette
+// générée (emoji sur dégradé de couleur).
+function RecipeCover({ recipe, size, radius = 12, emojiSize = "2rem", full = false }) {
+  const v = recipeVisual(recipe);
+  const base = {
+    borderRadius: radius,
+    overflow: "hidden",
+    flexShrink: 0,
+    ...(full ? { width: "100%", height: size } : { width: size, height: size }),
+  };
+  if (recipe.image) {
+    return <img src={recipe.image} alt={recipe.name} style={{ ...base, objectFit: "cover", display: "block" }} />;
+  }
+  return (
+    <div
+      style={{
+        ...base,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: `linear-gradient(135deg, ${v.from}, ${v.to})`,
+      }}
+    >
+      <span style={{ fontSize: full ? "3.4rem" : emojiSize, filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.25))" }}>{v.emoji}</span>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   FICHE RECETTE (détail plein écran)
+--------------------------------------------------------- */
+function RecipeSheet({ recipe, onBack }) {
+  const preps = (recipe.preps || []).map((id) => PREPS[id]).filter(Boolean);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
+      <button
+        onClick={onBack}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.25rem",
+          alignSelf: "flex-start",
+          background: "none",
+          border: "none",
+          padding: "0.2rem 0.1rem",
+          cursor: "pointer",
+          color: COLORS.forest,
+          fontWeight: 600,
+          fontSize: "0.85rem",
+        }}
+      >
+        <ChevronLeft size={18} /> Retour
+      </button>
+
+      <RecipeCover recipe={recipe} size={170} radius={16} full />
+
+      <div>
+        <h2 style={{ fontFamily: "'Fraunces', serif", fontSize: "1.4rem", fontWeight: 700, margin: "0 0 0.5rem", color: COLORS.ink }}>{recipe.name}</h2>
+        <div style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap" }}>
+          <Tag tone="mustard">{recipe.protein}</Tag>
+          {recipe.seasons.map((s) => (
+            <Tag key={s}>{WEATHER_LABEL[s] || s}</Tag>
+          ))}
+        </div>
+      </div>
+
+      {recipe.fridgeLife && (
+        <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.82rem", color: COLORS.inkSoft }}>
+          <Clock size={14} /> {recipe.fridgeLife}
+        </div>
+      )}
+
+      <Card>
+        <SectionTitle icon={ShoppingBasket}>Ingrédients</SectionTitle>
+        <ul style={{ margin: 0, paddingLeft: "1.1rem", fontSize: "0.88rem", color: COLORS.ink, display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+          {recipe.ingredients.map((ing, j) => (
+            <li key={j}>
+              {ing.name} <span style={{ color: COLORS.inkSoft }}>— {formatQty(ing.amount, ing.unit)}</span>
+            </li>
+          ))}
+        </ul>
+        <p style={{ margin: "0.6rem 0 0", fontSize: "0.72rem", color: COLORS.inkSoft, fontStyle: "italic" }}>Quantités pour 2 personnes.</p>
+      </Card>
+
+      {preps.length > 0 && (
+        <Card>
+          <SectionTitle icon={Soup}>Préparations maison</SectionTitle>
+          <ul style={{ margin: 0, paddingLeft: "1.1rem", fontSize: "0.86rem", color: COLORS.ink }}>
+            {preps.map((p) => (
+              <li key={p.id}>{p.name}</li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      <Card>
+        <SectionTitle icon={ListChecks}>Préparation</SectionTitle>
+        <ol style={{ margin: 0, paddingLeft: "1.2rem", fontSize: "0.88rem", color: COLORS.ink, display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          {recipe.steps.map((s, j) => (
+            <li key={j}>{s}</li>
+          ))}
+        </ol>
+      </Card>
+
+      {(recipe.nutritionNote || recipe.novaNote) && (
+        <Card style={{ background: COLORS.paperDeep, border: "none" }}>
+          {recipe.nutritionNote && <p style={{ margin: "0 0 0.35rem", fontSize: "0.82rem", color: COLORS.forest }}>{recipe.nutritionNote}</p>}
+          {recipe.novaNote && <p style={{ margin: 0, fontSize: "0.78rem", color: COLORS.inkSoft, fontStyle: "italic" }}>{recipe.novaNote}</p>}
+        </Card>
       )}
     </div>
   );

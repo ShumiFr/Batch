@@ -78,7 +78,7 @@ function pickRecipes(pool, nights) {
 }
 
 // Formate une quantité { amount, unit } en texte lisible.
-function formatQty(amount, unit) {
+export function formatQty(amount, unit) {
   if (unit === "piece") return `${amount}`;
   return `${amount} ${unit}`;
 }
