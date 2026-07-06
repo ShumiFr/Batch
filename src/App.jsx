@@ -15,8 +15,10 @@ import {
   Trash2,
   Soup,
   Clock,
+  Minus,
+  Plus,
 } from "lucide-react";
-import { generatePlan } from "./services/planner";
+import { generatePlan, formatUnitQty, stepFor } from "./services/planner";
 
 /* ---------------------------------------------------------
    TOKENS
@@ -253,6 +255,27 @@ export default function App() {
     } catch {}
   };
 
+  // Décompte (ou remet) une quantité d'une préparation maison, en respectant
+  // le pas de l'unité (1 pot, 10 ml...). Bornée entre 0 et la quantité produite.
+  // Forme fonctionnelle : chaque clic part du dernier état, pour ne pas perdre
+  // les clics rapides successifs.
+  const adjustPrep = (idx, delta) => {
+    setCurrentWeek((prev) => {
+      if (!prev) return prev;
+      const updated = {
+        ...prev,
+        homemadePreps: prev.homemadePreps.map((p, i) => {
+          if (i !== idx || !p.qty) return p;
+          const max = p.qty.amount;
+          const next = Math.min(max, Math.max(0, (p.remaining ?? max) + delta));
+          return { ...p, remaining: Math.round(next * 100) / 100 };
+        }),
+      };
+      saveWeek(updated).catch(() => {});
+      return updated;
+    });
+  };
+
   const openWeek = async (id) => {
     const w = await loadWeek(id);
     if (w) {
@@ -305,7 +328,7 @@ export default function App() {
         {tab === "plan" && <PlanTab week={currentWeek} />}
         {tab === "shopping" && <ShoppingTab week={currentWeek} onToggle={toggleShoppingItem} />}
         {tab === "steps" && <StepsTab week={currentWeek} onToggle={toggleStep} />}
-        {tab === "homemade" && <HomemadeTab week={currentWeek} />}
+        {tab === "homemade" && <HomemadeTab week={currentWeek} onAdjust={adjustPrep} />}
         {tab === "history" && <HistoryTab history={history} onOpen={openWeek} onDelete={removeWeek} currentId={currentWeek?.id} />}
       </main>
 
@@ -564,7 +587,7 @@ function StepsTab({ week, onToggle }) {
   );
 }
 
-function HomemadeTab({ week }) {
+function HomemadeTab({ week, onAdjust }) {
   if (!week || !week.homemadePreps?.length) return <EmptyState text="Les bouillons, sauces et autres préparations maison de la semaine apparaîtront ici." />;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>
@@ -574,14 +597,66 @@ function HomemadeTab({ week }) {
             <Soup size={17} color={COLORS.forest} />
             <h3 style={{ fontFamily: "'Fraunces', serif", fontSize: "1rem", margin: 0 }}>{p.name}</h3>
           </div>
-          <p style={{ margin: "0 0 0.25rem", fontSize: "0.85rem", color: COLORS.inkSoft }}>Quantité : {p.quantity}</p>
-          <p style={{ margin: "0 0 0.25rem", fontSize: "0.85rem", color: COLORS.inkSoft }}>Utilisé dans : {p.usedIn}</p>
+
+          {p.qty ? (
+            <PrepStock p={p} onAdjust={(delta) => onAdjust(i, delta)} />
+          ) : (
+            <p style={{ margin: "0 0 0.25rem", fontSize: "0.85rem", color: COLORS.inkSoft }}>Quantité : {p.quantity}</p>
+          )}
+
+          <p style={{ margin: "0.35rem 0 0.25rem", fontSize: "0.85rem", color: COLORS.inkSoft }}>Utilisé dans : {p.usedIn}</p>
           <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginTop: "0.4rem" }}>
             <Tag tone="mustard">{p.expiry}</Tag>
             <Tag>{p.storage}</Tag>
           </div>
         </Card>
       ))}
+    </div>
+  );
+}
+
+// Compteur de stock d'une préparation maison : − / + par pas d'unité.
+function PrepStock({ p, onAdjust }) {
+  const max = p.qty.amount;
+  const unit = p.qty.unit;
+  const remaining = p.remaining ?? max;
+  const step = stepFor(unit);
+  const empty = remaining <= 0;
+  const full = remaining >= max;
+
+  const btn = (disabled) => ({
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "32px",
+    height: "32px",
+    borderRadius: "8px",
+    border: `1.5px solid ${COLORS.line}`,
+    background: disabled ? COLORS.paperDeep : COLORS.white,
+    color: disabled ? COLORS.sage : COLORS.forest,
+    cursor: disabled ? "default" : "pointer",
+  });
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", margin: "0.15rem 0 0.3rem" }}>
+        <button onClick={() => onAdjust(-step)} disabled={empty} style={btn(empty)} aria-label="Retirer">
+          <Minus size={16} />
+        </button>
+        <div style={{ minWidth: "84px", textAlign: "center" }}>
+          <div style={{ fontFamily: "'Fraunces', serif", fontSize: "1.1rem", fontWeight: 600, color: empty ? COLORS.brick : COLORS.ink }}>
+            {formatUnitQty(remaining, unit)}
+          </div>
+          <div style={{ fontSize: "0.68rem", color: COLORS.inkSoft }}>restant</div>
+        </div>
+        <button onClick={() => onAdjust(step)} disabled={full} style={btn(full)} aria-label="Ajouter">
+          <Plus size={16} />
+        </button>
+      </div>
+      <p style={{ margin: 0, fontSize: "0.75rem", color: COLORS.inkSoft }}>
+        Préparé : {formatUnitQty(max, unit)}
+        {empty && <span style={{ color: COLORS.brick, fontWeight: 600 }}> · épuisé</span>}
+      </p>
     </div>
   );
 }

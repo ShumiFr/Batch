@@ -23,7 +23,7 @@ export const PREPS = {
   bouillonVolaille: {
     id: "bouillonVolaille",
     name: "Bouillon de volaille maison",
-    quantity: "≈ 1,5 L",
+    qty: { amount: 1500, unit: "ml" },
     storage: "Au frais 4 jours, ou congelé en portions",
     expiry: "4 jours au frais",
     ingredients: [
@@ -39,7 +39,7 @@ export const PREPS = {
   bouillonLegumes: {
     id: "bouillonLegumes",
     name: "Bouillon de légumes maison",
-    quantity: "≈ 1,5 L",
+    qty: { amount: 1500, unit: "ml" },
     storage: "Au frais 4 jours, ou congelé en portions",
     expiry: "4 jours au frais",
     ingredients: [
@@ -55,7 +55,7 @@ export const PREPS = {
   vinaigrette: {
     id: "vinaigrette",
     name: "Vinaigrette maison",
-    quantity: "1 petit bocal",
+    qty: { amount: 250, unit: "ml" },
     storage: "Au frais 1 semaine",
     expiry: "7 jours au frais",
     ingredients: [
@@ -70,7 +70,7 @@ export const PREPS = {
   bechamel: {
     id: "bechamel",
     name: "Béchamel maison",
-    quantity: "≈ 500 ml",
+    qty: { amount: 500, unit: "ml" },
     storage: "Au frais 3 jours",
     expiry: "3 jours au frais",
     ingredients: [
@@ -86,7 +86,7 @@ export const PREPS = {
   yaourt: {
     id: "yaourt",
     name: "Yaourts maison",
-    quantity: "6 pots",
+    qty: { amount: 8, unit: "pot" },
     storage: "Au frais 8 jours",
     expiry: "8 jours au frais",
     ingredients: [
@@ -100,7 +100,7 @@ export const PREPS = {
   mayonnaise: {
     id: "mayonnaise",
     name: "Mayonnaise maison",
-    quantity: "1 bol",
+    qty: { amount: 250, unit: "ml" },
     storage: "Au frais 2 jours",
     expiry: "2 jours au frais",
     ingredients: [
@@ -115,7 +115,7 @@ export const PREPS = {
   pesto: {
     id: "pesto",
     name: "Pesto de basilic maison",
-    quantity: "1 petit bocal",
+    qty: { amount: 200, unit: "ml" },
     storage: "Au frais 5 jours (film d'huile en surface)",
     expiry: "5 jours au frais",
     ingredients: [
@@ -132,7 +132,7 @@ export const PREPS = {
   sauceTomateCrue: {
     id: "sauceTomateCrue",
     name: "Coulis de tomate crue maison",
-    quantity: "≈ 400 ml",
+    qty: { amount: 400, unit: "ml" },
     storage: "Au frais 2 jours",
     expiry: "2 jours au frais",
     ingredients: [
@@ -148,7 +148,7 @@ export const PREPS = {
   pateBrisee: {
     id: "pateBrisee",
     name: "Pâte brisée maison",
-    quantity: "1 pâte",
+    qty: { amount: 1, unit: "pâte" },
     storage: "Au frais 3 jours, ou congelée",
     expiry: "3 jours au frais",
     ingredients: [
@@ -162,7 +162,7 @@ export const PREPS = {
   courtBouillon: {
     id: "courtBouillon",
     name: "Court-bouillon maison",
-    quantity: "≈ 1,5 L",
+    qty: { amount: 1500, unit: "ml" },
     storage: "À utiliser le jour même",
     expiry: "Le jour même",
     ingredients: [

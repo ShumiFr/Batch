@@ -83,6 +83,27 @@ function formatQty(amount, unit) {
   return `${amount} ${unit}`;
 }
 
+// Pas de décrémentation/incrémentation selon l'unité (utilisé par l'onglet
+// Maison pour retirer de quoi consommer une préparation).
+export function stepFor(unit) {
+  if (unit === "ml" || unit === "g") return 10;
+  if (unit === "L" || unit === "kg") return 0.5;
+  return 1; // unités dénombrables : pot, pâte, bocal...
+}
+
+// Unités dénombrables qui se mettent au pluriel (pas les unités de mesure).
+const COUNTABLE_UNITS = ["pot", "pâte", "bocal", "part", "portion", "piece"];
+
+// Formate une quantité de préparation maison pour l'affichage, avec pluriel
+// simple pour les unités dénombrables (8 pots, 1 pâte...).
+export function formatUnitQty(amount, unit) {
+  const n = Math.round(amount * 100) / 100; // évite les flottants disgracieux
+  if (!COUNTABLE_UNITS.includes(unit)) return `${n} ${unit}`;
+  let label = unit;
+  if (n > 1) label = unit === "bocal" ? "bocaux" : `${unit}s`;
+  return `${n} ${label}`;
+}
+
 // Agrège tous les ingrédients (recettes + préps) par rayon, en fusionnant
 // les doublons de même nom + même unité (les quantités s'additionnent).
 function buildShoppingList(recipes, preps) {
@@ -205,7 +226,8 @@ export function generatePlan({ nights = 5, tempHint = "doux", dislikes = "" }) {
     recipes,
     homemadePreps: preps.map((p) => ({
       name: p.name,
-      quantity: p.quantity,
+      qty: p.qty, // { amount, unit } : quantité produite
+      remaining: p.qty.amount, // stock restant, décrémentable dans l'onglet Maison
       usedIn: chosen
         .filter((r) => (r.preps || []).includes(p.id))
         .map((r) => r.name)
