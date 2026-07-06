@@ -17,8 +17,12 @@ import {
   Clock,
   Minus,
   Plus,
+  BookOpen,
+  X,
 } from "lucide-react";
 import { generatePlan, formatUnitQty, stepFor } from "./services/planner";
+import { RECIPES } from "./data/recipes";
+import { SEASONS, getSeason, recipeHasProduce } from "./data/seasons";
 
 /* ---------------------------------------------------------
    TOKENS
@@ -125,6 +129,37 @@ function Tag({ children, tone = "sage" }) {
   );
 }
 
+// Petit interrupteur visuel (état contrôlé par le parent).
+function Toggle({ on }) {
+  return (
+    <span
+      style={{
+        flexShrink: 0,
+        width: "40px",
+        height: "24px",
+        borderRadius: "999px",
+        background: on ? COLORS.forest : COLORS.line,
+        position: "relative",
+        transition: "background 0.15s",
+      }}
+    >
+      <span
+        style={{
+          position: "absolute",
+          top: "2px",
+          left: on ? "18px" : "2px",
+          width: "20px",
+          height: "20px",
+          borderRadius: "50%",
+          background: COLORS.white,
+          transition: "left 0.15s",
+          boxShadow: "0 1px 2px rgba(0,0,0,0.2)",
+        }}
+      />
+    </span>
+  );
+}
+
 function Card({ children, style }) {
   return (
     <div
@@ -166,6 +201,7 @@ function SectionTitle({ icon: Icon, children }) {
 --------------------------------------------------------- */
 const TABS = [
   { id: "generate", label: "Générer", icon: Sparkles },
+  { id: "recipes", label: "Recettes", icon: BookOpen },
   { id: "plan", label: "Planning", icon: CalendarRange },
   { id: "shopping", label: "Courses", icon: ShoppingBasket },
   { id: "steps", label: "Étapes", icon: ListChecks },
@@ -184,9 +220,12 @@ export default function App() {
   const [currentWeek, setCurrentWeek] = useState(null);
   const [history, setHistory] = useState([]);
 
+  const currentSeason = getSeason();
   const [nights, setNights] = useState(5);
   const [dislikes, setDislikes] = useState("aubergine, courgette, carotte, tomate chaude");
-  const [tempHint, setTempHint] = useState("doux");
+  // Météo par défaut = celle de la saison en cours.
+  const [tempHint, setTempHint] = useState(currentSeason.weather);
+  const [seasonAware, setSeasonAware] = useState(true);
 
   const refreshHistory = useCallback(async () => {
     const idx = await loadHistoryIndex();
@@ -201,7 +240,7 @@ export default function App() {
     setLoading(true);
     setError("");
     try {
-      const result = generatePlan({ nights, tempHint, dislikes });
+      const result = generatePlan({ nights, tempHint, dislikes, seasonAware });
 
       const week = {
         id: uid(),
@@ -320,11 +359,15 @@ export default function App() {
             setDislikes={setDislikes}
             tempHint={tempHint}
             setTempHint={setTempHint}
+            seasonAware={seasonAware}
+            setSeasonAware={setSeasonAware}
+            season={currentSeason}
             loading={loading}
             error={error}
             onGenerate={generate}
           />
         )}
+        {tab === "recipes" && <RecipesTab season={currentSeason} />}
         {tab === "plan" && <PlanTab week={currentWeek} />}
         {tab === "shopping" && <ShoppingTab week={currentWeek} onToggle={toggleShoppingItem} />}
         {tab === "steps" && <StepsTab week={currentWeek} onToggle={toggleStep} />}
@@ -378,7 +421,7 @@ export default function App() {
 /* ---------------------------------------------------------
    TAB: GENERATE
 --------------------------------------------------------- */
-function GenerateTab({ nights, setNights, dislikes, setDislikes, tempHint, setTempHint, loading, error, onGenerate }) {
+function GenerateTab({ nights, setNights, dislikes, setDislikes, tempHint, setTempHint, seasonAware, setSeasonAware, season, loading, error, onGenerate }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
       <Card>
@@ -392,33 +435,64 @@ function GenerateTab({ nights, setNights, dislikes, setDislikes, tempHint, setTe
           <textarea value={dislikes} onChange={(e) => setDislikes(e.target.value)} rows={2} style={{ ...inputStyle, resize: "vertical" }} />
         </Field>
 
-        <Field label="Météo de la semaine">
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            {[
-              { id: "froid", label: "Froid", icon: Thermometer },
-              { id: "doux", label: "Doux", icon: Leaf },
-              { id: "chaud", label: "Chaud", icon: Thermometer },
-            ].map((opt) => (
-              <button
-                key={opt.id}
-                onClick={() => setTempHint(opt.id)}
-                style={{
-                  flex: 1,
-                  padding: "0.55rem 0.4rem",
-                  borderRadius: "10px",
-                  border: `1.5px solid ${tempHint === opt.id ? COLORS.forest : COLORS.line}`,
-                  background: tempHint === opt.id ? COLORS.forest : COLORS.white,
-                  color: tempHint === opt.id ? COLORS.white : COLORS.ink,
-                  fontWeight: 600,
-                  fontSize: "0.82rem",
-                  cursor: "pointer",
-                }}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
+        <Field label="Adapter à la saison">
+          <button
+            onClick={() => setSeasonAware(!seasonAware)}
+            style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "0.6rem",
+              padding: "0.6rem 0.75rem",
+              borderRadius: "10px",
+              border: `1.5px solid ${seasonAware ? COLORS.forest : COLORS.line}`,
+              background: seasonAware ? "rgba(46,74,60,0.06)" : COLORS.white,
+              cursor: "pointer",
+            }}
+          >
+            <span style={{ display: "flex", alignItems: "center", gap: "0.45rem", fontSize: "0.85rem", fontWeight: 600, color: COLORS.ink }}>
+              <span style={{ fontSize: "1.1rem" }}>{season.emoji}</span>
+              {seasonAware ? `Recettes ${seasonDe(season.label)}` : "Toutes les saisons"}
+            </span>
+            <Toggle on={seasonAware} />
+          </button>
+          <p style={{ fontSize: "0.72rem", color: COLORS.inkSoft, margin: "0.4rem 0 0" }}>
+            {seasonAware
+              ? "Le planning ne piochera que des plats adaptés à la saison actuelle."
+              : "Le planning peut piocher dans toutes les recettes, sans tenir compte de la saison."}
+          </p>
         </Field>
+
+        {seasonAware && (
+          <Field label="Météo de la semaine">
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              {[
+                { id: "froid", label: "Froid", icon: Thermometer },
+                { id: "doux", label: "Doux", icon: Leaf },
+                { id: "chaud", label: "Chaud", icon: Thermometer },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => setTempHint(opt.id)}
+                  style={{
+                    flex: 1,
+                    padding: "0.55rem 0.4rem",
+                    borderRadius: "10px",
+                    border: `1.5px solid ${tempHint === opt.id ? COLORS.forest : COLORS.line}`,
+                    background: tempHint === opt.id ? COLORS.forest : COLORS.white,
+                    color: tempHint === opt.id ? COLORS.white : COLORS.ink,
+                    fontWeight: 600,
+                    fontSize: "0.82rem",
+                    cursor: "pointer",
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </Field>
+        )}
 
         <button onClick={onGenerate} disabled={loading} style={primaryButtonStyle(loading)}>
           {loading ? (
@@ -657,6 +731,166 @@ function PrepStock({ p, onAdjust }) {
         Préparé : {formatUnitQty(max, unit)}
         {empty && <span style={{ color: COLORS.brick, fontWeight: 600 }}> · épuisé</span>}
       </p>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   TAB: RECETTES (bannière saison + produits de saison + liste)
+--------------------------------------------------------- */
+const WEATHER_LABEL = { froid: "Froid", doux: "Doux", chaud: "Chaud" };
+
+// Élision : "d'été", "d'automne", "d'hiver", mais "de printemps".
+function seasonDe(label) {
+  const l = label.toLowerCase();
+  return /^[aeiouyàâéèh]/.test(l) ? `d'${l}` : `de ${l}`;
+}
+
+function RecipesTab({ season }) {
+  // Filtre saison : par défaut on montre les recettes de la saison courante.
+  const [seasonOnly, setSeasonOnly] = useState(true);
+  const [produce, setProduce] = useState(null); // pastille active
+
+  let list = RECIPES;
+  if (seasonOnly) list = list.filter((r) => r.seasons.includes(season.weather));
+  if (produce) list = list.filter((r) => recipeHasProduce(r, produce));
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      {/* Bannière hero de la saison */}
+      <div
+        style={{
+          borderRadius: "16px",
+          padding: "1.4rem 1.2rem",
+          background: `linear-gradient(135deg, ${season.hero.from}, ${season.hero.to})`,
+          color: COLORS.white,
+        }}
+      >
+        <div style={{ fontSize: "2.2rem", lineHeight: 1 }}>{season.emoji}</div>
+        <h2 style={{ fontFamily: "'Fraunces', serif", fontSize: "1.6rem", fontWeight: 700, margin: "0.4rem 0 0.2rem" }}>
+          Recettes {seasonDe(season.label)}
+        </h2>
+        <p style={{ margin: 0, fontSize: "0.85rem", opacity: 0.92 }}>{season.tagline}</p>
+      </div>
+
+      {/* Produits de saison : pastilles cliquables */}
+      <div>
+        <p style={{ margin: "0 0 0.6rem", fontSize: "0.85rem", fontWeight: 700, color: COLORS.forestDeep }}>
+          Ils sont de saison :
+        </p>
+        <div style={{ display: "flex", gap: "0.7rem", overflowX: "auto", paddingBottom: "0.3rem" }}>
+          {season.produce.map((p) => {
+            const active = produce && produce.name === p.name;
+            return (
+              <button
+                key={p.name}
+                onClick={() => setProduce(active ? null : p)}
+                style={{
+                  flexShrink: 0,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "0.3rem",
+                  width: "62px",
+                }}
+              >
+                <span
+                  style={{
+                    width: "54px",
+                    height: "54px",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "1.6rem",
+                    background: active ? COLORS.forest : COLORS.white,
+                    border: `2px solid ${active ? COLORS.forest : COLORS.line}`,
+                    boxShadow: active ? "0 2px 6px rgba(46,74,60,0.3)" : "none",
+                  }}
+                >
+                  {p.emoji}
+                </span>
+                <span style={{ fontSize: "0.66rem", fontWeight: active ? 700 : 500, color: active ? COLORS.forest : COLORS.inkSoft, textAlign: "center", lineHeight: 1.1 }}>
+                  {p.name}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Barre de filtres */}
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+        <button
+          onClick={() => setSeasonOnly(!seasonOnly)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.4rem",
+            padding: "0.35rem 0.7rem",
+            borderRadius: "999px",
+            border: `1.5px solid ${seasonOnly ? COLORS.forest : COLORS.line}`,
+            background: seasonOnly ? COLORS.forest : COLORS.white,
+            color: seasonOnly ? COLORS.white : COLORS.ink,
+            fontSize: "0.75rem",
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          {seasonOnly ? `${season.label} uniquement` : "Toutes les saisons"}
+        </button>
+        {produce && (
+          <button
+            onClick={() => setProduce(null)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.3rem",
+              padding: "0.35rem 0.6rem 0.35rem 0.7rem",
+              borderRadius: "999px",
+              border: "none",
+              background: COLORS.mustard,
+              color: COLORS.white,
+              fontSize: "0.75rem",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            {produce.emoji} {produce.name}
+            <X size={13} />
+          </button>
+        )}
+        <span style={{ fontSize: "0.75rem", color: COLORS.inkSoft, marginLeft: "auto" }}>
+          {list.length} recette{list.length > 1 ? "s" : ""}
+        </span>
+      </div>
+
+      {/* Liste des recettes */}
+      {list.length === 0 ? (
+        <EmptyState text={produce ? `Aucune recette avec « ${produce.name} » ${seasonOnly ? "cette saison." : "."}` : "Aucune recette."} />
+      ) : (
+        list.map((r) => (
+          <Card key={r.id}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "0.5rem" }}>
+              <h3 style={{ fontFamily: "'Fraunces', serif", fontSize: "1.05rem", margin: "0 0 0.4rem", color: COLORS.ink }}>{r.name}</h3>
+            </div>
+            <div style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap", marginBottom: "0.5rem" }}>
+              <Tag tone="mustard">{r.protein}</Tag>
+              {r.seasons.map((s) => (
+                <Tag key={s}>{WEATHER_LABEL[s] || s}</Tag>
+              ))}
+            </div>
+            <ul style={{ margin: 0, paddingLeft: "1.1rem", fontSize: "0.83rem", color: COLORS.inkSoft }}>
+              {r.ingredients.map((ing, j) => (
+                <li key={j}>{ing.name}</li>
+              ))}
+            </ul>
+          </Card>
+        ))
+      )}
     </div>
   );
 }

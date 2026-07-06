@@ -177,12 +177,12 @@ function findPivots(recipes) {
    Reproduit le schéma renvoyé auparavant par l'IA :
    { meta, recipes, homemadePreps, shoppingList, prepSteps }
 --------------------------------------------------------- */
-export function generatePlan({ nights = 5, tempHint = "doux", dislikes = "" }) {
+export function generatePlan({ nights = 5, tempHint = "doux", dislikes = "", seasonAware = true }) {
   const disliked = parseDislikes(dislikes);
 
-  // 1. Filtrer sur la météo + exclusions.
+  // 1. Filtrer sur les exclusions, et sur la météo/saison si demandé.
   let pool = RECIPES.filter(
-    (r) => r.seasons.includes(tempHint) && !hasDisliked(r, disliked)
+    (r) => !hasDisliked(r, disliked) && (!seasonAware || r.seasons.includes(tempHint))
   );
   // Repli : si trop peu de recettes pour la saison, on élargit à toutes.
   if (pool.length < nights) {
@@ -209,17 +209,18 @@ export function generatePlan({ nights = 5, tempHint = "doux", dislikes = "" }) {
     novaNote: r.novaNote,
   }));
 
-  const tempNote =
-    tempHint === "chaud"
-      ? "Semaine chaude : plats froids, tièdes et légers privilégiés."
-      : tempHint === "froid"
-      ? "Semaine froide : plats chauds et mijotés bienvenus."
-      : "Météo douce : plats variés.";
+  const tempNote = !seasonAware
+    ? "Toutes saisons : plats piochés dans l'ensemble du répertoire."
+    : tempHint === "chaud"
+    ? "Semaine chaude : plats froids, tièdes et légers privilégiés."
+    : tempHint === "froid"
+    ? "Semaine froide : plats chauds et mijotés bienvenus."
+    : "Météo douce : plats variés.";
 
   return {
     meta: {
       nights: chosen.length,
-      season: SEASON_LABEL[tempHint] || tempHint,
+      season: seasonAware ? SEASON_LABEL[tempHint] || tempHint : "Toutes saisons",
       tempNote,
       pivotProducts: findPivots(chosen),
     },
