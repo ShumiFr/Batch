@@ -20,14 +20,22 @@ export const SEASONS = {
     tagline: "Légumes tendres, herbes fraîches et premières salades.",
     hero: { from: "#AEBCA0", to: "#2E4A3C" },
     produce: [
+      // Légumes
+      { name: "Asperge", emoji: "🌱", match: ["asperge"] },
       { name: "Épinard", emoji: "🥬", match: ["épinard", "epinard"] },
       { name: "Petits pois", emoji: "🫛", match: ["petits pois", "petit pois"] },
-      { name: "Radis", emoji: "🌶️", match: ["radis"] },
-      { name: "Salade", emoji: "🥗", match: ["salade", "romaine", "laitue"] },
+      { name: "Radis", emoji: "🔴", match: ["radis"] },
+      { name: "Artichaut", emoji: "🌿", match: ["artichaut"] },
+      { name: "Blette", emoji: "🥬", match: ["blette", "bette"] },
       { name: "Navet", emoji: "🥔", match: ["navet"] },
-      { name: "Menthe", emoji: "🌿", match: ["menthe"] },
+      { name: "Oignon nouveau", emoji: "🧅", match: ["oignon"] },
+      { name: "Salade", emoji: "🥗", match: ["salade", "romaine", "laitue"] },
+      { name: "Betterave", emoji: "🟣", match: ["betterave"] },
+      { name: "Concombre", emoji: "🥒", match: ["concombre"] },
+      // Fruits
       { name: "Fraise", emoji: "🍓", match: ["fraise"] },
-      { name: "Asperge", emoji: "🌱", match: ["asperge"] },
+      { name: "Rhubarbe", emoji: "🌿", match: ["rhubarbe"] },
+      { name: "Cerise", emoji: "🍒", match: ["cerise"] },
     ],
   },
   ete: {
@@ -38,14 +46,22 @@ export const SEASONS = {
     tagline: "Plats frais, crudités et couleurs du soleil.",
     hero: { from: "#C79A32", to: "#A54A32" },
     produce: [
+      // Légumes
       { name: "Tomate", emoji: "🍅", match: ["tomate"] },
       { name: "Concombre", emoji: "🥒", match: ["concombre"] },
       { name: "Poivron", emoji: "🫑", match: ["poivron"] },
       { name: "Haricots verts", emoji: "🫛", match: ["haricot vert", "haricots vert"] },
       { name: "Salade", emoji: "🥗", match: ["salade", "romaine", "laitue"] },
       { name: "Basilic", emoji: "🌿", match: ["basilic"] },
+      { name: "Fenouil", emoji: "🌿", match: ["fenouil"] },
+      { name: "Maïs", emoji: "🌽", match: ["maïs", "mais"] },
+      // Fruits
       { name: "Melon", emoji: "🍈", match: ["melon"] },
+      { name: "Pastèque", emoji: "🍉", match: ["pastèque", "pasteque"] },
       { name: "Pêche", emoji: "🍑", match: ["pêche", "peche"] },
+      { name: "Abricot", emoji: "🟠", match: ["abricot"] },
+      { name: "Cerise", emoji: "🍒", match: ["cerise"] },
+      { name: "Framboise", emoji: "🍇", match: ["framboise"] },
     ],
   },
   automne: {
@@ -56,14 +72,22 @@ export const SEASONS = {
     tagline: "Courges, champignons et légumes réconfortants.",
     hero: { from: "#C79A32", to: "#1E3229" },
     produce: [
+      // Légumes
       { name: "Potiron", emoji: "🎃", match: ["potiron", "potimarron", "courge"] },
       { name: "Champignon", emoji: "🍄", match: ["champignon"] },
       { name: "Brocoli", emoji: "🥦", match: ["brocoli"] },
       { name: "Chou-fleur", emoji: "🥬", match: ["chou-fleur", "chou fleur"] },
       { name: "Poireau", emoji: "🧅", match: ["poireau"] },
       { name: "Épinard", emoji: "🥬", match: ["épinard", "epinard"] },
+      { name: "Endive", emoji: "🥬", match: ["endive"] },
+      { name: "Betterave", emoji: "🟣", match: ["betterave"] },
+      // Fruits
       { name: "Raisin", emoji: "🍇", match: ["raisin"] },
       { name: "Pomme", emoji: "🍎", match: ["pomme "] }, // évite "pomme de terre"
+      { name: "Poire", emoji: "🍐", match: ["poire"] },
+      { name: "Châtaigne", emoji: "🌰", match: ["châtaigne", "chataigne", "marron"] },
+      { name: "Coing", emoji: "🍏", match: ["coing"] },
+      { name: "Figue", emoji: "🫐", match: ["figue"] },
     ],
   },
   hiver: {
@@ -74,14 +98,23 @@ export const SEASONS = {
     tagline: "Mijotés, gratins et légumes d'hiver.",
     hero: { from: "#2E4A3C", to: "#1E3229" },
     produce: [
+      // Légumes
       { name: "Poireau", emoji: "🧅", match: ["poireau"] },
-      { name: "Chou", emoji: "🥬", match: ["chou vert", "chou rouge", "chou-fleur"] },
+      { name: "Chou", emoji: "🥬", match: ["chou"] },
+      { name: "Chou-fleur", emoji: "🥦", match: ["chou-fleur", "chou fleur"] },
       { name: "Potiron", emoji: "🎃", match: ["potiron", "courge"] },
       { name: "Pomme de terre", emoji: "🥔", match: ["pomme de terre", "pommes de terre"] },
       { name: "Champignon", emoji: "🍄", match: ["champignon"] },
-      { name: "Navet", emoji: "🧆", match: ["navet"] },
-      { name: "Orange", emoji: "🍊", match: ["orange"] },
       { name: "Endive", emoji: "🥬", match: ["endive"] },
+      { name: "Mâche", emoji: "🥬", match: ["mâche", "mache"] },
+      { name: "Navet", emoji: "🥔", match: ["navet"] },
+      { name: "Panais", emoji: "🥔", match: ["panais"] },
+      // Fruits
+      { name: "Citron", emoji: "🍋", match: ["citron"] },
+      { name: "Orange", emoji: "🍊", match: ["orange"] },
+      { name: "Clémentine", emoji: "🍊", match: ["clémentine", "clementine", "mandarine"] },
+      { name: "Poire", emoji: "🍐", match: ["poire"] },
+      { name: "Pomme", emoji: "🍎", match: ["pomme "] },
     ],
   },
 };
